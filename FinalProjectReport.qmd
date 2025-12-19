@@ -14,16 +14,16 @@ execute:
   message: false
 ---
 
-SQ: To what extent do socioeconomic conditions predict variation in subway crime rates?
+# **To what extent do socioeconomic conditions predict variation in subway crime rates?**
 
-## Introduction
+## **Introduction**
 
 This project examines the question, "Is there a correlation between crimes in the MTA and the stations where they occur?"  Using NYPD subway crime complaint data alongside MTA ridership statistics, the broader goal is to understand not just where subway crime occurs, but whether observed patterns reflect differences in exposure, station usage, or neighborhood characteristics. Prior research has shown that subway crime declined during COVID and rebounded unevenly as ridership returned, raising questions about how safety has evolved in the post-pandemic period.
 
-Within this broader framework, my subquestion focuses on the role of neighborhood socioeconomic conditions. Specifically, I examine whether subway crime rates differ across ZIP codes with varying median household incomes after adjusting for ridership. By linking crime incidents to ZIP code–level income data and normalizing by rider volume, this analysis explores whether socioeconomic context helps explain variation in subway crime beyond raw counts alone.
+Within this broader framework, my subquestion focuses on the role of neighborhood socioeconomic conditions. Specifically, I examine whether subway crime rates differ across ZIP codes with varying median household incomes after adjusting for ridership. By linking crime incidents to ZIP code level income data and normalizing by rider volume, this analysis explores whether socioeconomic context helps explain variation in subway crime beyond raw counts alone.
 
 
-## Data Acquisition
+## **Data Acquisition**
 
 To prepare the NYPD complaint data for analysis, we restricted the dataset to incidents that occurred specifically within the subway system and applied several cleaning steps to improve data quality and spatial accuracy. First, we standardized variable names, converted complaint dates into usable formats, and extracted the year and month for later analysis. Because assigning complaints to ZIP codes requires precise geographic information, we removed all records missing valid latitude or longitude values. We then filtered out administrative and non-criminal incidents, retaining only penal-law complaint types relevant to the study of subway crime. Duplicate complaint numbers were removed to avoid double-counting, and records with coordinates falling outside the geographic bounds of New York City were excluded. The resulting dataset consists of unique, accurately geocoded subway crime complaints that can be reliably mapped to ZIP codes and merged with socioeconomic data, supporting the construction of accurate neighborhood-level crime rates.
 
@@ -218,7 +218,7 @@ datatable(
 
 
 
-## Income by ZCTA Data Downloading and Cleaning
+### **Income by ZCTA Data Downloading and Cleaning**
 
 To examine whether socioeconomic conditions help explain variation in subway crime, we rely on median household income as a neighborhood-level indicator. Median income is widely used in social science research as a summary measure of economic resources and living conditions, and it provides a consistent, comparable benchmark across New York City ZIP Code Tabulation Areas (ZCTAs, but for the purpose of this project we will call them zipcodes). To obtain these data programmatically, we use the U.S. Census Bureau’s American Community Survey (ACS) 2023 5-year estimates, accessed through the tidycensus interface, which provides reproducible API-based retrieval. After downloading the ACS table containing median household income, we retain only the essential fields—ZCTA identifiers and estimated income values, rename them using analysis friendly variable names, and save a cleaned dataset for later merging with crime data. 
 ```{r, results='hide', message=FALSE, warning=FALSE}
@@ -230,7 +230,7 @@ library(readr)
 
 acs_year <- 2023
 
-# Download ACS 2023 median household income by ZCTA (ACS 5-year)
+# Download ACS 2023 median household income by ZCTA 
 
 acs_income_raw <- get_acs(
   geography = "zcta",
@@ -275,7 +275,7 @@ library(dplyr)
 library(DT)
 library(htmltools)
 
-# Use the same global Calibri + title + striping CSS as the crime table
+# Use Calibri 
 custom_css <- tags$style(HTML("
   table.dataTable,
   table.dataTable th,
@@ -348,7 +348,7 @@ income_dt
 
 
 
-## Joining Data Sets
+### **Joining Data Sets**
 
 To link crimes to neighborhood conditions, we first assign each crime incident to a ZIP Codeusing its latitude and longitude. This is done by performing a spatial join between the point locations of crimes and the polygon boundaries of Zipcodes obtained from the U.S. Census. Once each crime has a ZIP code, we merge the crime data with the ACS income data so that every incident carries the median income of its surrounding neighborhood. From this joint dataset, we then compute ZIP-level summaries and present them in an interactive, styled table that shows both median income and total subway crime by ZIP code.
 
@@ -356,7 +356,7 @@ To link crimes to neighborhood conditions, we first assign each crime incident t
 
 
 ```{r crime_zip_income_table}
-# Crime + Zip + Income joint dataset and detailed table
+#  detailed table
 
 library(tigris)
 library(sf)
@@ -366,7 +366,7 @@ library(htmltools)
 
 options(tigris_use_cache = TRUE)
 
-# 1. Get ZCTA polygons and detect the ID column
+#  Get ZCTA polygons and detect the ID column
 zctas <- zctas(year = 2020)
 zctas_sf <- st_transform(zctas, crs = 4326)
 
@@ -379,7 +379,7 @@ if (is.na(zip_col) || length(zip_col) == 0) {
 
 zctas_sf_small <- zctas_sf[, zip_col, drop = FALSE]
 
-# 2. Convert crime_clean to sf points using longitude and latitude
+#  Convert crime_clean to sf points using longitude and latitude
 crime_sf <- st_as_sf(
   crime_clean,
   coords = c("longitude", "latitude"),
@@ -387,7 +387,7 @@ crime_sf <- st_as_sf(
   remove = FALSE
 )
 
-# 3. Spatial join: assign ZCTA ID to each crime point
+#  Spatial join: assign ZCTA ID to each crime point
 crime_with_zcta <- st_join(
   crime_sf,
   zctas_sf_small,
@@ -395,17 +395,17 @@ crime_with_zcta <- st_join(
   left = TRUE
 )
 
-# 4. Drop geometry, rename ZCTA ID column to Zipcode
+#  Drop geometry, rename ZCTA ID column to Zipcode
 crime_with_zip <- crime_with_zcta %>%
   st_drop_geometry()
 
 names(crime_with_zip)[names(crime_with_zip) == zip_col] <- "Zipcode"
 
-# 5. Merge crime data with ACS income by Zipcode
+#  Merge crime data with ACS income by Zipcode
 crime_with_income <- crime_with_zip %>%
   left_join(acs_income_clean, by = "Zipcode")
 
-# 6. Keep only rows with valid ZIP and Income and select key variables
+#  Keep only rows with valid ZIP and Income and select key variables
 crime_detail_full <- crime_with_income %>%
   filter(!is.na(Zipcode), !is.na(Income))
 
@@ -424,7 +424,7 @@ crime_detail_full <- crime_detail_full %>%
 
 crime_detail_table <- crime_detail_full
 
-# 7. Build interactive detailed crime-level datatable
+# Build interactive detailed crime-level datatable
 
 crime_dt <- datatable(
   crime_detail_table,
@@ -509,11 +509,11 @@ crime_detail_widget <- tagList(
 crime_detail_widget
 
 ```
-## Ridership Data Download
+### **Ridership Data Download**
 
 For ridership, we use the MTA’s published average weekday ridership for each station in a given year. This measure reflects the typical number of riders using a station on a weekday and does not include weekend travel. While this means it does not capture total subway usage, average weekday ridership provides a stable and commonly used proxy for overall transit activity. It is less sensitive to short term fluctuations and reporting noise, which makes it appropriate for neighborhood level comparisons over time.
 
-The ridership data was downloaded directly from the MTA’s published Excel file so the analysis could be done with a consistent, up-to-date source. After loading the file, the dataset was cleaned by keeping only real station rows, selecting the ridership years from 2018 to 2023, renaming the columns, and removing extra headers. Ridership numbers were rounded, and a new average ridership value was created along with a rank based on that average. 
+The ridership data was downloaded directly from the MTA’s published Excel file so the analysis could be done with a consistent, up to date source. After loading the file, the dataset was cleaned by keeping only real station rows, selecting the ridership years from 2018 to 2023, renaming the columns, and removing extra headers. Ridership numbers were rounded, and a new average ridership value was created along with a rank based on that average. 
 
 Because the ridership file did not include geographic coordinates, a separate MTA origin-destination dataset was used to obtain latitude and longitude for subway station complexes. Those coordinates were then used to assign each station to a ZIP Code (ZCTA) through spatial matching. The ZIP codes allow station ridership to be linked to neighborhood-level data, making it possible to study how subway usage varies across different areas and to connect ridership patterns to local socioeconomic characteristics later in the analysis.
 
@@ -1069,6 +1069,7 @@ ridership_widget <- tagList(
 ridership_widget
 ```
 
+## **Methodology**
 
 To analyze subway crime patterns in a consistent way across neighborhoods and across time, we aggregated the data at the ZIP Code and year level. Each subway crime incident was assigned to a ZIP Code using its latitude and longitude, and crimes were then counted within each ZIP Code for each year from 2018 through 2023. This allowed us to compare crime levels across neighborhoods.
 
@@ -1299,7 +1300,7 @@ datatable(
 
   After building this final ZIP level dataset, the code runs a Spearman correlation test between income and the average crimes per 100,000 rides. Spearman is used because it tests whether there is a consistent increasing or decreasing relationship between the two variables without requiring the relationship to be perfectly linear or the data to be normally distributed. Finally, the scatterplot visualizes this same comparison by plotting median household income on the x axis and the average crimes per 100,000 rides on the y axis. Each point represents one ZIP Code, so the graph shows whether higher or lower income ZIP Codes tend to have higher or lower crime rates after adjusting for ridership. The fitted trend line is added to summarize the overall direction of the relationship across all ZIP Codes.
 
-###  Map of Median Income by Zipcode and Crime Rate
+###  **Map of Median Income by Zipcode and Crime Rate**
 
 ```{r}
 library(dplyr)
@@ -1547,22 +1548,51 @@ datatable(
     digits = 4
   ) %>%
   formatSignif(columns = "p_value", digits = 4)
+```
+
+### **Income-Crime Correlation**
+
+```{r}
 
 # plot
 
+# load required package
+library(scales)
+
+# fit linear model
+lm_fit <- lm(avg_crime_per_100k_rides ~ Income, data = zip_summary_trimmed)
+
+# extract R-squared
+r2_value <- summary(lm_fit)$r.squared
+
+# plot with regression line and R-squared
 ggplot(zip_summary_trimmed, aes(x = Income, y = avg_crime_per_100k_rides)) +
   geom_point(alpha = 0.7) +
   geom_smooth(method = "lm", se = FALSE) +
   scale_x_continuous(labels = dollar_format(accuracy = 1)) +
+  annotate(
+    "text",
+    x = Inf,
+    y = Inf,
+    label = paste0("R² = ", round(r2_value, 3)),
+    hjust = 1.1,
+    vjust = 1.5,
+    size = 4
+  ) +
   labs(
     title = "Median Income vs Subway Crime Rate by ZIP Code (IQR-Trimmed)",
     x = "Median household income (ACS 2023)",
     y = "Average crimes per 100,000 rides (2018–2023)"
   )
+
 ```
 
-## Conclusion
+## **Conclusion**
 
-A key limitation of this analysis is the imperfect measurement of exposure. Subway ridership data are not available at the ZIP code level, so station ridership had to be spatially assigned to ZIP codes based on station locations. This approach does not fully capture how riders move across neighborhoods or where trips actually begin and end, which may introduce measurement error in the normalized crime rates. 
+This analysis finds a clear and statistically significant negative relationship between neighborhood income levels and subway crime risk in New York City. ZIP codes with higher median household income tend to experience lower subway crime rates per 100,000 rides, even after accounting for differences in ridership. While the analysis does not establish causality, it shows that variation in subway crime risk is closely aligned with neighborhood socioeconomic conditions rather than being evenly distributed across the system.
+
+These findings suggest that subway crime is shaped by more than passenger volume alone. Areas with similar ridership levels can face very different levels of risk, indicating that local context matters for transit safety outcomes. From a policy perspective, this implies that strategies focused only on high-traffic stations may miss neighborhoods where riders face disproportionately higher exposure to crime. Incorporating socioeconomic context into safety planning could help identify locations where investments in enforcement, station design, or social services may have the greatest marginal impact, rather than applying uniform approaches across the system.
+
+A key limitation of this analysis is the imperfect measurement of ridership. Subway ridership data is not available at the ZIP code level, so station ridership had to be spatially assigned to ZIP codes based on station locations. This approach does not fully capture how riders move across neighborhoods or where trips actually begin and end, which may introduce measurement error in the crime rates and provide a less than accurate depiction of the income levels of passengers at any given station. 
 
 Future work could improve this analysis by incorporating additional socioeconomic indicators beyond median income, such as unemployment, housing instability, or educational attainment. Finally, organizing and analyzing crime by offense type could reveal whether certain crimes are more strongly associated with specific neighborhood characteristics, providing a more nuanced understanding of how socioeconomic conditions relate to subway crime risk for policy initiatives.
